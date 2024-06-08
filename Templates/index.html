@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <title>Doctors</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        input[type="text"] {
+            width: 60%;
+            padding: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        select {
+            width: 10%;
+            padding: 8px;
+            margin-left: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            display: inline-block;
+            text-align: center;
+            appearance: none; /* Remove default arrow */
+            background: url('data:image/svg+xml;utf8,<svg fill="%23666" height="16" viewBox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>') no-repeat right 8px center/8px 10px;
+        }
+        select:hover {
+            background-color: #007bff;
+            color: #fff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px; /* Add margin to create space */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+            text-align: left;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .add-doctor-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .add-doctor-link:hover {
+            background-color: #0056b3;
+        }
+        .search-container {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 10px;
+        }
+        .upload-container {
+            margin-bottom: 20px; /* Add margin to create space */
+        }
+        .upload-container input[type="file"] {
+            display: none; /* Hide the file input */
+        }
+        .custom-upload-button {
+            background-color: #007bff;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .custom-upload-button:hover {
+            background-color: #0056b3;
+        }
+        .upload-label {
+            display: inline-block;
+            padding: 8px 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .update-resume-button, .delete-button {
+            background-color: #007bff;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px; /* Add some spacing between buttons */
+        }
+
+        .update-resume-button:hover, .delete-button:hover {
+            background-color: #0056b3;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px; /* Adjust as needed */
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Doctors List</h1>
+    <div class="search-container">
+        <input type="text" id="search" placeholder="Search for doctors...">
+        <input type="text" id="areaSpecifiedSearch" placeholder="Search by area specified...">
+        <select id="areaDropdown">
+            <option value="">Select an area</option>
+            {% for area in areas %}
+            <option value="{{ area }}">{{ area }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="upload-container">
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <label for="file-upload" class="upload-label">Choose File</label>
+            <input type="file" id="file-upload" name="file" accept=".xlsx">
+            <button type="submit" class="custom-upload-button">Upload</button>
+        </form>
+    </div>
+    <table class="doctor-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Area</th>
+                <th>WhatsApp</th>
+                <th>Resume Link</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for doctor in doctors %}
+            <tr>
+                <td>{{ doctor.name }}</td>
+                <td>{{ doctor.area }}</td>
+                <td>{{ doctor.wa }}</td>
+                <td>
+                    {% if doctor.link.lower().strip() not in ['n/a', 'na'] %}
+                    <a href="{{ doctor.link }}" target="_blank">{{ doctor.link }}</a>
+                    {% else %}
+                    {{ doctor.link }}
+                    {% endif %}
+                </td>
+                <td class="action-buttons">
+                    <form action="/update_resume/{{ doctor.id }}" method="get">
+                        <button class="update-resume-button" type="submit">Update Resume</button>
+                    </form>
+                    <form action="/delete_doctor/{{ doctor.id }}" method="post">
+                        <button class="delete-button" type="submit">Delete</button>
+                    </form>
+                </td>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a class="add-doctor-link" href="/add_doctor">Add Doctor</a>
+
+
+    <script>
+        document.getElementById('search').addEventListener('input', function() {
+            filterDoctors();
+        });
+
+        document.getElementById('areaSpecifiedSearch').addEventListener('input', function() {
+            filterDoctors();
+        });
+
+        document.getElementById('areaDropdown').addEventListener('change', function() {
+            filterDoctors();
+            updateDropdownLabel();
+        });
+
+        function filterDoctors() {
+            var searchValue = document.getElementById('search').value.toLowerCase();
+            var areaSpecifiedSearchValue = document.getElementById('areaSpecifiedSearch').value.toLowerCase();
+            var selectedArea = document.getElementById('areaDropdown').value.toLowerCase();
+            var rows = document.querySelectorAll('.doctor-table tbody tr');
+            rows.forEach(function(row) {
+                var name = row.cells[0].innerText.toLowerCase();
+                var area = row.cells[1].innerText.toLowerCase();
+                var areaSpecified = row.cells[3].innerText.toLowerCase().split(', ').map(item => item.trim());
+                if ((name.includes(searchValue)) && 
+                    (areaSpecifiedSearchValue === "" || areaSpecified.includes(areaSpecifiedSearchValue)) && 
+                    (selectedArea === "" || area.includes(selectedArea))) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function updateDropdownLabel() {
+            var dropdown = document.getElementById('areaDropdown');
+            var selectedOption = dropdown.options[dropdown.selectedIndex];
+            dropdown.style.color = selectedOption.value ? '#000' : '#888';
+        }
+    </script>
+</body>
+</html>
